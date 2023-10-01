@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <style>
+        body {
+            background-image: url("fondo00.jpg");
+            background-size: cover;
+        }
+    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de históricos</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="style-historicos.css" />
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+    <style>
+        /* Estilo para el infoBox */
+        #infoBox {
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 10px;
+            position: relative;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg_animate">
+
+        <div class="container" style="background-color: rgba(255, 255, 255, 0.5);">
+            <h1>CONSULTA DE HISTÓRICOS</h1>
+            <!-- Agrega un contenedor para el mapa Leaflet -->
+            <div class="container-historico">
+                <div class="container-izq ">
+                    <div id="map"></div>
+
+                    <!-- Volver pantalla recepción -->
+                    <div class="grupobotones">
+                        <a href="index.html"><button class="centerMapButton">RECEPCIÓN GPS</button></a>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                            data-bs-target="#staticBackdrop" style="margin-top: 20px;">
+                            ¿Cómo funciona?
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Calendario -->
+                <div class="container-der ">
+                    <div class="container-tabla">
+                        <div class="calendar">
+                            <label for="fechaInput">Selecciona una fecha de inicio:</label>
+                            <input type="datetime-local" id="fechaInicial">
+                            <label for="fechaInput">Selecciona una fecha de final:</label>
+                            <input type="datetime-local" id="fechaFinal">
+                            <button onclick="buscarEnBaseDeDatos()" class="btn btn-success">Buscar</button>
+                        </div>
+                        <!-- Contenedor de la tabla -->
+                        <div id="infoTableContainer">
+                            <!-- Tabla para mostrar la información -->
+                            <table class="table" id="infoTable">
+                                <thead>
+                                    <tr>
+                                        <th>Latitud</th>
+                                        <th>Longitud</th>
+                                        <th>Fecha y Hora</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Aquí se llenará dinámicamente con JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Div para mostrar la información del lugar -->
+                    <div id="infoBox">
+                        <h3>Información del lugar:</h3>
+                        <p id="infoText"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="burbujas">
+            <div class="burbuja"></div>
+            <div class="burbuja"></div>
+            <div class="burbuja"></div>
+            <div class="burbuja"></div>
+            <div class="burbuja"></div>
+            <div class="burbuja"></div>
+            <div class="burbuja"></div>
+        </div>
+    </div>
+
+
+    <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+        aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="staticBackdropLabel">Instrucciones</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+
+                    <p>En este apartado se puede consultar el historial de locaciones registradas por la aplicación,
+                        filtrando por fecha y hora.
+                    <p>Posteriormente se mostrará una tabla con los registros obtenidos de la base de datos.</p>
+                    <hr>
+                    <h2 class="fs-5">Navegación</h2>
+                    <p>Selecciona fecha y hora de registro que deseas consultar. </p>
+                    <div class="container-fluid">
+                        <div class="row">
+                            <div class="col-md-4 ms-auto">
+                                <p>Por ejemplo:
+                            </div>
+                            <img class="col-md-8 ms-auto" src="../public/img/time.png">
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <img class="col-md-6 ms-auto" src="../public/img/trayecto.png">
+                            <div class="col-md-6 ms-auto">
+                                <p>Si se encuentran datos, se trazará una ruta en el mapa de color azul, indicando la
+                                    ruta registrada.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Incluye el script de Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+
+    <script>
+        var map = L.map('map').setView([0, 0], 13);
+        var polyline = L.polyline([], { color: 'blue' }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        var marker = L.marker([0, 0]).addTo(map);
+
+        // Variable global para almacenar los datos
+        var data = [];
+
+        async function centerMap(latitude, longitude) {
+            map.setView([latitude, longitude], 13);
+        }
+
+        async function fetchAndCenterMap() {
+            try {
+                const response = await fetch('/api/ubicaciones/ultimo');
+
+                if (!response.ok) {
+                    throw new Error('Error al obtener la ubicación más reciente');
+                }
+
+                data = await response.json();
+                const { latitude, longitude } = data;
+                console.log(latitude, longitude)
+                lastLatitude = latitude;
+                lastLongitude = longitude;
+                // Centra el mapa en las coordenadas obtenidas
+                centerMap(latitude, longitude);
+            } catch (error) {
+                console.error('Error al obtener la ubicación más reciente:', error);
+                // Maneja el error aquí si es necesario
+            }
+        }
+
+        window.addEventListener('load', fetchAndCenterMap);
+
+        async function buscarEnBaseDeDatos() {
+            const fechaInicial = document.getElementById('fechaInicial').value;
+            const fechaFinal = document.getElementById('fechaFinal').value;
+            const formattedDateInicial = new Date(fechaInicial).toISOString();
+            const formattedDateFinal = new Date(fechaFinal).toISOString();
+
+            try {
+                // Verificar si la fecha final es mayor que la fecha actual
+                const fechaActual = new Date().toISOString();
+                if (formattedDateFinal > fechaActual) {
+                    console.log('La fecha de fin es futura. No se puede buscar información futura.');
+                    return;
+                }
+
+                const response = await fetch(`/api/ubicaciones/por-rango-fechas?fechaInicio=${formattedDateInicial}&fechaFin=${formattedDateFinal}`);
+                if (!response.ok) {
+                    throw new Error('Error en la solicitud');
+                }
+
+                data = await response.json();
+                if (data.message) {
+                    throw new Error(data.message);
+                }
+
+                mostrarInformacionEnTabla(data);
+                trazarPolilinea(data);
+
+            } catch (error) {
+                console.error('Error al buscar en la base de datos:', error.message);
+                // Aquí puedes manejar el error de acuerdo a tus necesidades, por ejemplo, mostrar un mensaje al usuario
+            }
+        }
+
+        // Define la función para mostrar información en la tabla
+        function mostrarInformacionEnTabla(data) {
+            const tabla = document.getElementById('infoTable').getElementsByTagName('tbody')[0];
+            tabla.innerHTML = ''; // Limpia la tabla antes de agregar datos
+
+            // Puedes iterar sobre 'data' y agregar filas a la tabla
+            data.forEach((item) => {
+                const fila = tabla.insertRow();
+                const celda1 = fila.insertCell(0);
+                const celda2 = fila.insertCell(1);
+                const celda3 = fila.insertCell(2);
+
+                celda1.textContent = item.latitude;
+                celda2.textContent = item.longitude;
+
+                // Convertir la hora a la zona horaria de Bogotá (GMT-5)
+                const dateUTC = new Date(item.time_stamp);
+                const dateBogota = new Date(dateUTC);
+                dateBogota.setUTCHours(dateBogota.getUTCHours() - 5); // Ajustar a GMT-5 (Bogotá)
+
+                // Formatear la fecha y hora en el formato deseado (incluyendo la fecha)
+                const formattedDate = dateBogota.toLocaleString('es-CO', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour12: true, // Usar formato de 12 horas (AM/PM)
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+
+                celda3.textContent = formattedDate;
+            });
+        }
+
+        function trazarPolilinea(data) {
+            const coordinates = data.map((item) => [item.latitude, item.longitude]);
+            polyline.setLatLngs(coordinates);
+        }
+
+    </script>
+</body>
+
+</html>
